@@ -1,0 +1,359 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Key Details - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h1 class="page-title">Key Details</h1>
+        <p class="page-subtitle">Detailed information for API key {{ key.key[:16] }}...</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('admin.keys') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i>
+            Back to Keys
+        </a>
+    </div>
+</div>
+
+<!-- Key Information -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-key"></i>
+            Key Information
+        </h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+            <div>
+                <h4 style="margin-bottom: 1rem; color: #374151;">Key Details</h4>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Full Key</div>
+                        <div style="font-family: monospace; background: #f8fafc; padding: 0.5rem; border-radius: 4px; border: 1px solid #e2e8f0; word-break: break-all;">
+                            {{ key.key }}
+                            <button class="btn btn-sm btn-secondary" style="float: right;" onclick="copyKey('{{ key.key }}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Service Type</div>
+                        <div>
+                            {% if key.service_type == 'netflix' %}
+                                <span class="badge badge-danger">
+                                    <i class="fab fa-netflix"></i>
+                                    Netflix Only
+                                </span>
+                            {% elif key.service_type == 'chatgpt' %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-robot"></i>
+                                    ChatGPT Only
+                                </span>
+                            {% else %}
+                                <span class="badge badge-info">
+                                    <i class="fas fa-globe"></i>
+                                    Both Services
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Status</div>
+                        <div>
+                            {% if key.is_active %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Active
+                                </span>
+                            {% else %}
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                    Inactive
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 style="margin-bottom: 1rem; color: #374151;">Usage Statistics</h4>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Usage</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">
+                            {{ key.current_usage }} <span style="font-size: 1rem; color: #64748b;">/ {{ key.usage_limit }}</span>
+                        </div>
+                        {% set usage_percentage = (key.current_usage / key.usage_limit * 100) | int if key.usage_limit > 0 else 0 %}
+                        <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 0.5rem;">
+                            <div style="height: 100%; background: {% if usage_percentage < 50 %}#10b981{% elif usage_percentage < 80 %}#f59e0b{% else %}#ef4444{% endif %}; width: {{ usage_percentage }}%;"></div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">
+                            {{ usage_percentage }}% used
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Remaining Uses</div>
+                        <div style="font-size: 1.25rem; font-weight: 600;">
+                            {{ key.get_remaining_uses() }}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Created By</div>
+                        <div>{{ key.creator.username if key.creator else 'Unknown' }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 style="margin-bottom: 1rem; color: #374151;">Dates</h4>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Created</div>
+                        <div>{{ key.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Expires</div>
+                        <div>
+                            {% if key.expires_at %}
+                                {{ key.expires_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% if key.expires_at <= now() %}
+                                    <span class="badge badge-warning" style="margin-left: 0.5rem;">Expired</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-info">Never</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Days Until Expiration</div>
+                        <div>
+                            {% if key.expires_at %}
+                                {% set days_left = ((key.expires_at - now()).days) | int %}
+                                <span class="{% if days_left < 0 %}text-danger{% elif days_left < 7 %}text-warning{% else %}text-success{% endif %}">
+                                    {{ days_left }} days
+                                </span>
+                            {% else %}
+                                <span class="badge badge-info">Never</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+            <button class="btn btn-primary" onclick="resetUsage({{ key.id }})">
+                <i class="fas fa-redo"></i>
+                Reset Usage Count
+            </button>
+            
+            <button class="btn {% if key.is_active %}btn-danger{% else %}btn-success{% endif %}" onclick="toggleKey({{ key.id }})">
+                <i class="fas fa-{% if key.is_active %}times{% else %}check{% endif %}"></i>
+                {% if key.is_active %}Deactivate{% else %}Activate{% endif %} Key
+            </button>
+            
+            <button class="btn btn-danger" onclick="deleteKey({{ key.id }})">
+                <i class="fas fa-trash"></i>
+                Delete Key
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Usage Logs -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-history"></i>
+            Usage Logs
+        </h3>
+    </div>
+    <div class="card-body">
+        {% if logs.items %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Service</th>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                        <th>Error Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs.items %}
+                    <tr>
+                        <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            {% if log.service_used == 'netflix' %}
+                                <span class="badge badge-danger">
+                                    <i class="fab fa-netflix"></i>
+                                    Netflix
+                                </span>
+                            {% elif log.service_used == 'chatgpt' %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-robot"></i>
+                                    ChatGPT
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.ip_address or 'N/A' }}</td>
+                        <td>
+                            {% if log.success %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-check"></i>
+                                    Success
+                                </span>
+                            {% else %}
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-times"></i>
+                                    Failed
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.error_message or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination for logs -->
+        {% if logs.pages > 1 %}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div>
+                Showing {{ (logs.page - 1) * logs.per_page + 1 }} to {{ [logs.page * logs.per_page, logs.total] | min }} of {{ logs.total }} logs
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                {% if logs.has_prev %}
+                    <a href="{{ url_for('admin.key_details', key_id=key.id, page=logs.prev_num) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Previous
+                    </a>
+                {% endif %}
+                
+                {% for page_num in logs.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != logs.page %}
+                            <a href="{{ url_for('admin.key_details', key_id=key.id, page=page_num) }}" class="btn btn-secondary">{{ page_num }}</a>
+                        {% else %}
+                            <span class="btn btn-primary">{{ page_num }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="btn btn-secondary">…</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if logs.has_next %}
+                    <a href="{{ url_for('admin.key_details', key_id=key.id, page=logs.next_num) }}" class="btn btn-secondary">
+                        Next
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div style="text-align: center; padding: 2rem; color: #64748b;">
+            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p>No usage logs found for this key</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyKey(key) {
+    navigator.clipboard.writeText(key).then(() => {
+        showToast('Key copied to clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy key', 'error');
+    });
+}
+
+function resetUsage(keyId) {
+    if (confirm('Are you sure you want to reset the usage count for this key?')) {
+        fetch(`/admin/keys/${keyId}/reset-usage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message || 'Failed to reset usage', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Network error occurred', 'error');
+        });
+    }
+}
+
+function toggleKey(keyId) {
+    if (confirm('Are you sure you want to toggle this key?')) {
+        fetch(`/admin/keys/${keyId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message || 'Failed to toggle key', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Network error occurred', 'error');
+        });
+    }
+}
+
+function deleteKey(keyId) {
+    if (confirm('Are you sure you want to delete this key? This action cannot be undone.')) {
+        fetch(`/admin/keys/${keyId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => window.location.href = '{{ url_for("admin.keys") }}', 1000);
+            } else {
+                showToast(data.message || 'Failed to delete key', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Network error occurred', 'error');
+        });
+    }
+}
+</script>
+{% endblock %}

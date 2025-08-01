@@ -1,0 +1,244 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Overview of your code fetcher system</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('admin.create_key') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i>
+            Create New Key
+        </a>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_keys }}</div>
+        <div class="stat-label">Total API Keys</div>
+        <div class="stat-icon">
+            <i class="fas fa-key"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.active_keys }}</div>
+        <div class="stat-label">Active Keys</div>
+        <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_usage }}</div>
+        <div class="stat-label">Total Usage</div>
+        <div class="stat-icon">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.netflix_usage + stats.chatgpt_usage + stats.both_usage }}</div>
+        <div class="stat-label">Code Requests</div>
+        <div class="stat-icon">
+            <i class="fas fa-download"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Service Statistics -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-chart-pie"></i>
+                Service Usage
+            </h3>
+        </div>
+        <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="width: 12px; height: 12px; background: #e50914; border-radius: 50%;"></div>
+                        <span>Netflix</span>
+                    </div>
+                    <span style="font-weight: 600;">{{ stats.netflix_usage }}</span>
+                </div>
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="width: 12px; height: 12px; background: #10a37f; border-radius: 50%;"></div>
+                        <span>ChatGPT</span>
+                    </div>
+                    <span style="font-weight: 600;">{{ stats.chatgpt_usage }}</span>
+                </div>
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="width: 12px; height: 12px; background: #667eea; border-radius: 50%;"></div>
+                        <span>Both Services</span>
+                    </div>
+                    <span style="font-weight: 600;">{{ stats.both_usage }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-key"></i>
+                Keys by Service
+            </h3>
+        </div>
+        <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fab fa-netflix" style="color: #e50914;"></i>
+                        <span>Netflix Keys</span>
+                    </div>
+                    <span style="font-weight: 600;">{{ stats.netflix_keys }}</span>
+                </div>
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-robot" style="color: #10a37f;"></i>
+                        <span>ChatGPT Keys</span>
+                    </div>
+                    <span style="font-weight: 600;">{{ stats.chatgpt_keys }}</span>
+                </div>
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-globe" style="color: #667eea;"></i>
+                        <span>Universal Keys</span>
+                    </div>
+                    <span style="font-weight: 600;">{{ stats.both_keys }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Usage Chart -->
+{% if stats.daily_usage %}
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-chart-line"></i>
+            Usage Over Time (Last 7 Days)
+        </h3>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; align-items: end; gap: 1rem; height: 200px; padding: 1rem 0;">
+            {% set max_count = stats.daily_usage | map(attribute='count') | max %}
+            {% for day in stats.daily_usage %}
+            <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                {% set bar_height = (day.count / max_count * 150) | int if max_count > 0 else 10 %}
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 100%; height: {{ bar_height }}px; border-radius: 4px 4px 0 0; min-height: 10px;"></div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #64748b;">{{ day.date.strftime('%m/%d') }}</div>
+                <div style="font-size: 0.7rem; color: #94a3b8;">{{ day.count }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Activity -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-history"></i>
+            Recent Activity
+        </h3>
+    </div>
+    <div class="card-body">
+        {% if recent_logs %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Service</th>
+                        <th>Key</th>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if log.service_used == 'netflix' %}
+                                <span class="badge badge-danger">
+                                    <i class="fab fa-netflix"></i>
+                                    Netflix
+                                </span>
+                            {% elif log.service_used == 'chatgpt' %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-robot"></i>
+                                    ChatGPT
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <code>{{ log.api_key.key[:8] }}...</code>
+                        </td>
+                        <td>{{ log.ip_address or 'N/A' }}</td>
+                        <td>
+                            {% if log.success %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-check"></i>
+                                    Success
+                                </span>
+                            {% else %}
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-times"></i>
+                                    Failed
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 2rem; color: #64748b;">
+            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p>No recent activity found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh dashboard every 30 seconds
+setInterval(() => {
+    // Only refresh if user is still on the page
+    if (!document.hidden) {
+        location.reload();
+    }
+}, 30000);
+
+// Add fade-in animation to cards
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.stat-card, .card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create API Key - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h1 class="page-title">Create API Key</h1>
+        <p class="page-subtitle">Generate a new API key for accessing the code fetcher services</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('admin.keys') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i>
+            Back to Keys
+        </a>
+    </div>
+</div>
+
+<div style="max-width: 600px;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-plus"></i>
+                New API Key
+            </h3>
+        </div>
+        <div class="card-body">
+            <form id="createKeyForm">
+                <div class="form-group">
+                    <label for="service_type" class="form-label">Service Type</label>
+                    <select id="service_type" name="service_type" class="form-select" required>
+                        <option value="">Select a service...</option>
+                        <option value="netflix">Netflix Only</option>
+                        <option value="chatgpt">ChatGPT Only</option>
+                        <option value="both">Both Services</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="usage_limit" class="form-label">Usage Limit</label>
+                    <input 
+                        type="number" 
+                        id="usage_limit" 
+                        name="usage_limit" 
+                        class="form-input" 
+                        min="1" 
+                        max="1000" 
+                        value="10"
+                        required
+                    >
+                    <small style="color: #64748b; font-size: 0.8rem;">Number of times this key can be used</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="expires_in_days" class="form-label">Expiration (Optional)</label>
+                    <select id="expires_in_days" name="expires_in_days" class="form-select">
+                        <option value="">Never expires</option>
+                        <option value="1">1 Day</option>
+                        <option value="7">1 Week</option>
+                        <option value="30">1 Month</option>
+                        <option value="90">3 Months</option>
+                        <option value="365">1 Year</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-plus"></i>
+                        Create Key
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                        <i class="fas fa-undo"></i>
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Creation Card -->
+    <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-layer-group"></i>
+                Bulk Create Keys
+            </h3>
+        </div>
+        <div class="card-body">
+            <form id="bulkCreateForm">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div class="form-group">
+                        <label for="bulk_count" class="form-label">Number of Keys</label>
+                        <input 
+                            type="number" 
+                            id="bulk_count" 
+                            name="bulk_count" 
+                            class="form-input" 
+                            min="2" 
+                            max="100" 
+                            value="5"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bulk_service_type" class="form-label">Service Type</label>
+                        <select id="bulk_service_type" name="bulk_service_type" class="form-select" required>
+                            <option value="netflix">Netflix Only</option>
+                            <option value="chatgpt">ChatGPT Only</option>
+                            <option value="both">Both Services</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bulk_usage_limit" class="form-label">Usage Limit</label>
+                        <input 
+                            type="number" 
+                            id="bulk_usage_limit" 
+                            name="bulk_usage_limit" 
+                            class="form-input" 
+                            min="1" 
+                            max="1000" 
+                            value="10"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bulk_expires_in_days" class="form-label">Expiration</label>
+                        <select id="bulk_expires_in_days" name="bulk_expires_in_days" class="form-select">
+                            <option value="">Never expires</option>
+                            <option value="30">1 Month</option>
+                            <option value="90">3 Months</option>
+                            <option value="365">1 Year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+                    <i class="fas fa-layer-group"></i>
+                    Create Multiple Keys
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Generated Keys Display -->
+    <div id="generatedKeys" class="card" style="margin-top: 2rem; display: none;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-check-circle"></i>
+                Generated Keys
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="keysList"></div>
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-secondary" onclick="exportKeys()">
+                    <i class="fas fa-download"></i>
+                    Export as JSON
+                </button>
+                <button class="btn btn-secondary" onclick="copyAllKeys()">
+                    <i class="fas fa-copy"></i>
+                    Copy All Keys
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let generatedKeysData = [];
+
+// Single key creation
+document.getElementById('createKeyForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch('{{ url_for("admin.create_key") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('API key created successfully!', 'success');
+            displayGeneratedKeys([result.key]);
+            e.target.reset();
+        } else {
+            showToast(result.message || 'Failed to create key', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Network error occurred', 'error');
+    }
+});
+
+// Bulk key creation
+document.getElementById('bulkCreateForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Rename fields for bulk creation
+    data.count = data.bulk_count;
+    data.service_type = data.bulk_service_type;
+    data.usage_limit = data.bulk_usage_limit;
+    data.expires_in_days = data.bulk_expires_in_days;
+    
+    // Remove bulk prefixed fields
+    delete data.bulk_count;
+    delete data.bulk_service_type;
+    delete data.bulk_usage_limit;
+    delete data.bulk_expires_in_days;
+    
+    try {
+        const response = await fetch('{{ url_for("admin.bulk_create_keys") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`Successfully created ${result.keys.length} keys!`, 'success');
+            displayGeneratedKeys(result.keys);
+            e.target.reset();
+        } else {
+            showToast(result.message || 'Failed to create keys', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Network error occurred', 'error');
+    }
+});
+
+function displayGeneratedKeys(keys) {
+    generatedKeysData = keys;
+    const container = document.getElementById('generatedKeys');
+    const keysList = document.getElementById('keysList');
+    
+    keysList.innerHTML = '';
+    
+    keys.forEach((key, index) => {
+        const keyElement = document.createElement('div');
+        keyElement.style.cssText = `
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        keyElement.innerHTML = `
+            <div>
+                <div style="font-family: monospace; font-weight: 600; margin-bottom: 0.25rem;">
+                    ${key.key}
+                </div>
+                <div style="font-size: 0.8rem; color: #64748b;">
+                    ${key.service_type} • ${key.usage_limit} uses
+                    ${key.expires_at ? ' • Expires: ' + new Date(key.expires_at).toLocaleDateString() : ' • Never expires'}
+                </div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="copyKey('${key.key}')">
+                <i class="fas fa-copy"></i>
+            </button>
+        `;
+        
+        keysList.appendChild(keyElement);
+    });
+    
+    container.style.display = 'block';
+    container.scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyKey(key) {
+    navigator.clipboard.writeText(key).then(() => {
+        showToast('Key copied to clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy key', 'error');
+    });
+}
+
+function copyAllKeys() {
+    const keys = generatedKeysData.map(k => k.key).join('\n');
+    navigator.clipboard.writeText(keys).then(() => {
+        showToast('All keys copied to clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy keys', 'error');
+    });
+}
+
+function exportKeys() {
+    const dataStr = JSON.stringify(generatedKeysData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `api_keys_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function resetForm() {
+    document.getElementById('createKeyForm').reset();
+    document.getElementById('generatedKeys').style.display = 'none';
+}
+
+// Auto-focus on service type
+document.getElementById('service_type').focus();
+</script>
+{% endblock %}
