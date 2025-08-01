@@ -1,8 +1,8 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from .flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from .flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from .database import db, init_db, create_sample_keys, AdminUser, ApiKey, UsageLog
 from .admin import admin_bp
-from email_reader import get_latest_netflix_code, get_latest_chatgpt_code
+from .email_reader import get_latest_netflix_code, get_latest_chatgpt_code
 import os
 from datetime import datetime
 from dotenv import load_dotenv
