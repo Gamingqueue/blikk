@@ -209,3 +209,4 @@ def inject_current_year():
     """Inject current year into all templates"""
     return {'current_year': datetime.now().year}
 
+app = Flask(__name__)  # and later, exposed as `app`
